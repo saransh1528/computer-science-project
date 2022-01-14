@@ -1,0 +1,2 @@
+-> https://flask.palletsprojects.com/en/2.0.x/
+-> https://www.codementor.io/@adityamalviya/python-flask-mysql-connection-rxblpje73

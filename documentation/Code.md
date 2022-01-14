@@ -1,0 +1,415 @@
+**The structure of the folder:**
+->Project_Folder/
+	->app.py
+	->projectmodule/
+	->static/
+			->icom.png
+			->css/
+					->index.css
+					->order.css
+					->prod.css	
+	->templates/
+			->end.html
+			->index.html
+			->order.html
+			->prod.html
+
+**APP.PY**
+```
+# MODULES REQURIED 
+from flask_mysqldb import MySQL
+import mysql.connector
+import random
+from flask import Flask, render_template, request, abort
+# CREATING FLASK APP
+app = Flask(__name__)
+ 
+# ERROR PAGE FUNCTION 
+@app.route('/404Error')
+def error():
+    abort(401)
+ 
+# MYSQL CONFIGURATION
+app.config['MYSQL_HOST'] = 'localhost'
+app.config['MYSQL_USER'] = 'root'
+app.config['MYSQL_PASSWORD'] = '@Error404' 
+app.config['MYSQL_DB'] = 'grocery'
+ 
+
+mysql = MySQL(app)
+
+# HOME PAGE
+@app.route('/')
+def index():
+    return('This is the current home page of mmy project.')
+
+# A RANDOM SERIAL NUMBER FOR ORDERING 
+global num
+num = random.random()
+
+# WHEN ORDER IS FINSIHED
+@app.route('/done')
+def done():
+    return render_template('end.html')
+
+# VARIABLE FOR THE TOTAL AMOUNT TO BE DISPLAYED IN THE END
+total_amount = []
+
+# PAGE FOR THE ORDERING 
+@app.route('/order',methods=['GET', 'POST'])
+def order():
+    # CONNECTION
+    cur = mysql.connection.cursor()
+    # ASSIGNING VARIABLES 
+    gcode = 0
+    pqty = 0 
+    if request.method == "POST":
+        # GETTING VARIABLE INPUTED BY THE USER
+        gcode = request.form['code']
+        pqty = request.form['qty']
+    cur.execute(f"select gcode, gname, gprice * {pqty} from product where gcode = {gcode}")
+    recor = cur.fetchall()
+    custdict = []
+    
+    for i in recor:
+        #newdict = {'CODE':i[0],'NAME': i[1],'QUANTITY': i[2],'PRICE': i[3]}
+        code = i[0]
+        name = i[1]
+        quantity = pqty
+        price = i[2]
+        
+        total_amount.append(price)
+        cur.execute(f"insert into order_prod values('{num}',{code},'{name}',{quantity}, '{price}');")
+        # IF THE QUNATITY OF THE PRODUCT TABLE IS NULL
+        #THE FUNCTION DOESN'T STOP AS NULL - {QUNATITY} = NULL
+        sql = (f"update product set pqty = pqty - {quantity} where gcode = {code}; ")
+        cur.execute(sql)
+
+    cur.execute(f"select * from order_prod where num = '{num}';")
+    tyu = cur.fetchall()
+    
+    for m in tyu:
+        ui = {'CODE': m[1],'NAME' : m[2], 'QUANTITY' :m[3], 'PRICE': m[4]}    
+        custdict.append(ui)
+
+    print(total_amount)
+    new_amount = 0
+    for q in total_amount:
+         new_amount += q
+
+    mysql.connection.commit()
+    cur.close()
+    return render_template('order.html',ord=custdict,amount = new_amount)
+
+#PRODUCT PAGE 
+@app.route('/prod_items', methods=['GET', 'POST'])
+def prod_items():
+    
+    cur = mysql.connection.cursor()
+    cur.execute('select * from product;')
+    records = cur.fetchall()
+    big_dict = []
+    # reading from student file one by one
+    for row in records:
+        if row[3] > 0:
+            dict = {'CODE': row[0],'NAME' : row[1], 'PRICE' :row[2], 'QUANTITY': row[3]}    
+            big_dict.append(dict)
+        else:
+            pass
+    return render_template('prod.html',prod = big_dict)
+     
+#LOGIN PAGE
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == "POST":
+        details = request.form
+        login_id = details['id']
+        login_pass = details['pass']
+        cur = mysql.connection.cursor()
+        cur.execute(f"select * from login where login_id = '{login_id}' and login_password = '{login_pass}';")
+        records = cur.fetchall()
+            
+        if len(records) == 1:
+            return prod_items()
+
+        if len(records) != 1:
+            return error()
+        mysql.connection.commit()
+        cur.close()
+
+    return render_template('index.html')
+  
+if __name__ == '__main__':
+    app.run()
+
+user_ans = input("Setup: Want to set up the database: Y/N:")
+if user_ans.lower() == "y":
+    conn = mysql.connector.connect(host="localhost", user="root", passwd="@Error404", database="grocery")
+    mycursor = conn.cursor()
+    #PRODUCT TABLE
+    mycursor.execute("CREATE TABLE if not exists product (gcode int(4) PRIMARY KEY,gname char(30) NOT NULL, gprice float(8,2)NOT NULL,pqty int(5))")
+    print("PRODUCT table created\n")
+    #LOGIN TABLE
+    mycursor.execute("CREATE TABLE if not exists login(cid char(6) PRIMARY KEY,login_id char(50) NOT NULL,login_password char(50) NOT NULL) ;")
+    print("LOGIN table created\n")
+else:
+    pass
+```
+
+**INDEX.HTML**
+<html>
+<head>
+    <title>Login Page</title>
+    <link rel="icon" href="static/icom.png">
+    <link rel=stylesheet href='static/css/index.css'>
+</head>
+<body>
+    <div class='container'>
+        <div class="main">
+            <p class="sign" align="center">Sign In</p>
+            <form class="form1" method="POST" action="">
+                <input name='id' class="un" type="text" align="center" placeholder="Email">
+                <input name='pass' class="pass" type="password" align="center" placeholder="Password">
+                <input type="submit" class='submit' align="center">
+        </div>
+    </div>
+</body>
+</html>
+
+**INDEX.CSS**
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap");
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto Mono';
+}
+
+.main {
+    background-color: #24252a;
+    width: 400px;
+    height: 330px;
+    margin: 50px auto;
+    border-radius: 1.5em;
+    box-shadow: 1px 11px 35px 2px rgba(0, 0, 0, 0.14);
+}
+
+.sign {
+    padding-top: 40px;
+    color: rgb(255, 255, 255);
+    font-weight: bold;
+    font-size: 23px;
+}
+
+.pass,
+.un {
+    width: 76%;
+    color: #fff;
+    background: rgba(131, 125, 125, 0.04);
+    padding: 10px 20px;
+    border-radius: 20px;
+    border: 0;
+    text-align: center;
+    margin: 10px 0px 30px 46px;
+}
+
+.submit {
+    cursor: pointer;
+    border-radius: 5em;
+    color: #fff;
+    background: linear-gradient(to right, #a682ff, #715aff);
+    padding: 10px 40px 10px 40px;
+    border: 0;
+    margin-left: 35%;
+}
+
+**END.HTML**
+<html>
+<head>
+    <link rel="icon" href="static/icom.png">
+    <title>Done</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div class="italic font-mono  text-2xl ">
+        <p class="m-auto text-center">Order Successful!</p>
+    </div>
+</body>
+</html>
+
+**ORDER.HTML**
+<html>
+<head>
+    <link rel="icon" href="static/icom.png">
+    <title>Order</title>
+    <link rel="stylesheet" href="static/css/order.css">
+</head>
+
+<body>
+    <div class='container'>
+        <div class='front'>
+            <table class="styled-table">
+                <thead>
+                    <tr>
+                        <th>CODE</th>
+                        <th>NAME</th>
+                        <th>QUANTITY</th>
+                        <th>PRICE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for k in ord %}
+                    <tr>
+                        <td>{{k.CODE}}</td>
+                        <td>{{k.NAME}}</td>
+                        <td>{{k.QUANTITY}}</td>
+                        <td>$ {{k.PRICE}}</td>
+                    </tr>
+                    {% endfor%}
+                </tbody>
+            </table>
+            <div class='amount' align='center'>
+                <p>Your current total is $ {{amount}}.
+                </p>
+            </div>
+            <div class="main">
+                <p class="sign" align='center'>Order</p>
+                <form class="form1" method="POST">
+
+                    <input name='code' class='gcode' type='number' align='center' placeholder="Code" min="1">
+                    <input name='qty' class='pqty' type='number' align='center' placeholder="Quantity" min="1">
+                    <input type="submit" class='submit' align='center'>
+                    <br>
+                    <a href="http://127.0.0.1:5000/done" class="pqty">
+                        <p>Checkout</p>
+                    </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+
+
+**PROD.HTML**
+<html>
+<head>
+    <title>Products Available</title>
+    <link rel="icon" href="static/icom.png">
+    <link rel=stylesheet href='static/css/prod.css'>
+</head>
+<body>
+    <div class='container'>
+        <table class="styled-table">
+            <thead>
+                <tr>
+                    <th>CODE</th>
+                    <th>NAME</th>
+                    <th>PRICE</th>
+                    <th>QUANTITY</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for j in prod %}
+                <tr>
+                    <td>{{j.CODE}}</td>
+                    <td>{{j.NAME}}</td>
+                    <td>$ {{j.PRICE}}</td>
+                    <td>{{j.QUANTITY}}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="http://127.0.0.1:5000/order" target="_blank" class='button'>
+            <p>Order Now</p>
+        </a>
+    </div>
+</body>
+</html>
+
+**ORDER.CSS & PROD.CSS**
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap');
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto Mono';
+}
+
+.styled-table {
+    margin-top: 40px;
+    border-collapse: collapse;
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 0.9em;
+    min-width: 500px;
+    box-shadow: 4px 4px 10px rgba(29, 29, 29, 0.5);
+    border-radius: 7.5px;
+}
+
+.styled-table thead tr {
+    background-color: #715AFF;
+    color: #ffffff;
+    text-align: left;
+    border-radius: 15px;
+}
+
+.styled-table th,
+.styled-table td {
+    padding: 15px 15px;
+}
+
+.styled-table tbody tr:nth-of-type(odd) {
+    background-color: #ffffff;
+}
+
+.styled-table tbody tr:nth-of-type(even) {
+    background-color: #d4bafd;
+}
+
+.main {
+    background-color: #24252a;
+    width: 400px;
+    height: 330px;
+    margin: 50px auto;
+    border-radius: 1.5em;
+    box-shadow: 1px 11px 35px 2px rgba(0, 0, 0, 0.14);
+}
+
+.sign {
+    padding-top: 40px;
+    color: rgb(255, 255, 255);
+    font-weight: bold;
+    font-size: 23px;
+}
+
+.pqty,
+.gcode {
+    width: 76%;
+    color: #fff;
+    background: rgba(131, 125, 125, 0.04);
+    padding: 10px 20px;
+    border-radius: 20px;
+    border: 0;
+    text-align: center;
+    margin: 10px 0px 30px 46px;
+}
+
+.submit {
+    cursor: pointer;
+    border-radius: 5em;
+    color: #fff;
+    background: linear-gradient(to right, #a682ff, #715aff);
+    padding: 10px 40px 10px 40px;
+    border: 0;
+    margin-left: 35%;
+}
+
+.amount {
+    color: #715aff;
+    text-align: center;
+    margin-top: 50px;
+}
+
+**ICOM.PNG**
+https://drive.google.com/file/d/1MQVkVWYpSzYLwH1j0ytDUJbAVZGBqvCc/view?usp=sharing
+
