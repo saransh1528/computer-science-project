@@ -1,7 +1,7 @@
 # computer-science-project
 1. Dowload the project as a zip file.
 2. Then extract it, then go to your terminal.
-3. Cd into the extracted folder then pip install the modules.
+3. Cd into the extracted folder then pip install the modules ( go to documentation and there's a file named Modules & How to run.md just follow the steps mentioned in it )
 4. Then run "python -m flask run".
 5. It will create a local server and you would be asked whether to setup the tables.
 6. Type "Y" and it will create the tables for you and press "ctrl + c" to end the server.
