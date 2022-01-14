@@ -12,3 +12,4 @@
 11. You will be directed to product page where you can see the inventory, then click order.
 12. It will open a new tab for ordering, enter gcode and qty to order.
 13. Then click order now and voila.
+14. Also the whole documentation is there in the folder as well, just synopsis and output screenshot needs to be completed.
